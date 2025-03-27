@@ -250,3 +250,112 @@ jobs:
         # Install production-only dependencies for the 'production' environment
 ```
 
+7. Integrate Code Quality Checks
+
+   Objectives:
+
+   a)  Integrate code analysis tools into the GitHub Action workflow.
+   b)  Configure linters and static code analyzers for    maintaining code quality
+
+
+```yaml
+name: CI Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  NODE_ENV: development
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the code
+      - uses: actions/checkout@v2
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Run Linter
+      - name: Run ESLint
+        run: npm run lint
+        # Ensures that code follows style guidelines set in ESLint.
+
+      # Step 5: Static Code Analysis
+      - name: Run Static Code Analysis
+        run: npx eslint . --max-warnings=0
+        # Enforces zero warnings and performs static analysis.
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    steps:
+      # Step 1: Check out the code
+      - uses: actions/checkout@v2
+
+      # Step 2: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 3: Build the project
+      - name: Build
+        run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      # Step 1: Check out the code
+      - uses: actions/checkout@v2
+
+      # Step 2: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 3: Run tests
+      - name: Run tests
+        run: npm test
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      # Step 1: Check out the code
+      - uses: actions/checkout@v2
+
+      # Step 2: Use secrets (example for deployment token)
+      - name: Deploy
+        run: echo "Deploying with token: ${{ secrets.DEPLOY_TOKEN }}"
+```
+
+### Explanation of Changes:
+1. **`code-quality` Job**:
+   - Introduced a new job for running code quality checks using ESLint for linting and static code analysis.
+   - Ensures that only high-quality code is passed down to the build and test phases.
+
+2. **Dependencies Between Jobs**:
+   - The `build` job depends on the successful completion of the `code-quality` job using `needs: [code-quality]`.
+   - The `test` job depends on `build`, maintaining a logical flow.
+
+3. **Zero-Warning Enforcement**:
+   - The `npx eslint . --max-warnings=0` command ensures the workflow fails if any warnings are present, enforcing stricter quality checks.
+
+4. **Full CI/CD Workflow**:
+   - Combines code quality, build, testing, and deployment into a seamless pipeline.
+
+This structure ensures that only linted, analyzed, built, and tested code progresses to deployment, improving reliability and maintainability. 
+
